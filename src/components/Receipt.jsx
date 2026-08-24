@@ -9,10 +9,9 @@ const Receipt = forwardRef(function Receipt({ data }, ref) {
     <div className="receipt-offscreen">
       <div className="receipt" ref={ref}>
         <div className="receipt-store-name">{STORE_NAME}</div>
-        <div className="receipt-subtitle">Official Sales Receipt</div>
-
+        <div className="receipt-subtitle">Sales Receipt</div>
+        <div className="receipt-subtitle">Sitio Maraat, Brgy. Matab-ang, Toledo City, Cebu, 6038</div>
         <div className="receipt-dashed" />
-
         <div className="receipt-meta">
           <div>
             <span>Transaction No.</span>
@@ -56,7 +55,7 @@ const Receipt = forwardRef(function Receipt({ data }, ref) {
         <div className="receipt-dashed" />
 
         <div className="receipt-signature">
-          <span className="receipt-signature-label">Customer Signature</span>
+          <span className="receipt-signature-label">Cashier Signature</span>
           <div className="receipt-signature-line" />
         </div>
 
