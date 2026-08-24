@@ -248,7 +248,7 @@ button, input {
   bottom: -20px;
 }
 .skyblueme{
-  background:skyblue;
+      background: radial-gradient(#4cf7da, transparent);
 }
 .add-item-btn {
   background: repeating-linear-gradient(
