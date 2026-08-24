@@ -10,8 +10,9 @@ const Receipt = forwardRef(function Receipt({ data }, ref) {
       <div className="receipt" ref={ref}>
         <div className="receipt-store-name">{STORE_NAME}</div>
         <div className="receipt-subtitle">Sales Receipt</div>
-        <div className="receipt-subtitle">Sitio Maraat, Brgy. Matab-ang, Toledo City, Cebu, 6038</div>
+        <div className="receipt-subtitle">Maraat, Matab-ang, Toledo City, Cebu, 6038</div>
         <div className="receipt-dashed" />
+
         <div className="receipt-meta">
           <div>
             <span>Transaction No.</span>
@@ -23,7 +24,7 @@ const Receipt = forwardRef(function Receipt({ data }, ref) {
           </div>
           <div>
             <span>Customer No.</span>
-            <span>{customerNo?.trim() ? customerNo : 'Walk-in'}</span>
+            <span>{String(customerNo).padStart(4, '0')}</span>
           </div>
         </div>
 

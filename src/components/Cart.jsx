@@ -3,8 +3,6 @@ export default function Cart({
   onIncrease,
   onDecrease,
   onRemove,
-  customerNo,
-  setCustomerNo,
   total,
   onPrint,
   printing,
@@ -44,15 +42,6 @@ export default function Cart({
       </div>
 
       <div className="cart-footer">
-        <label className="field field-compact">
-          <span>Customer No. (optional)</span>
-          <input
-            value={customerNo}
-            onChange={(e) => setCustomerNo(e.target.value)}
-            placeholder="e.g. Walk-in"
-          />
-        </label>
-
         <div className="cart-total-row">
           <span>Total</span>
           <span className="cart-total-amount">₱{total.toFixed(2)}</span>
@@ -63,6 +52,7 @@ export default function Cart({
         <button className="btn-print" onClick={onPrint} disabled={printing || cart.length === 0}>
           {printing ? 'Preparing receipt…' : '🖨️ Print Receipt'}
         </button>
+        <p className="cart-hint">A customer number is assigned automatically when you print.</p>
       </div>
     </aside>
   )

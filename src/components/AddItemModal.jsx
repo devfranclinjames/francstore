@@ -6,7 +6,7 @@ export const EMOJI_CHOICES = [
   '🧂', '🍯', '🧼', '🩹', '🍺', '🧊', '🍿', '🛢️',
 ]
 
-export default function AddItemModal({ onClose, onSave }) {
+export default function AddItemModal({ category, categoryLabel, onClose, onSave }) {
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   const [emoji, setEmoji] = useState(EMOJI_CHOICES[0])
@@ -22,7 +22,7 @@ export default function AddItemModal({ onClose, onSave }) {
     setSaving(true)
     setError(null)
     try {
-      await onSave({ name: name.trim(), price: priceNum, emoji })
+      await onSave({ name: name.trim(), price: priceNum, emoji, category })
       onClose()
     } catch (err) {
       setError(err.message || 'Could not save the item.')
@@ -35,6 +35,7 @@ export default function AddItemModal({ onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <form className="modal-box" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <h2>Add new item</h2>
+        {categoryLabel && <p className="modal-subtitle">Adding to {categoryLabel}</p>}
 
         <label className="field">
           <span>Item name</span>

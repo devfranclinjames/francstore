@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
-import ItemButton from './components/ItemButton.jsx'
+import ItemSection from './components/ItemSection.jsx'
 import AddItemModal from './components/AddItemModal.jsx'
 import ManageItemsModal from './components/ManageItemsModal.jsx'
 import Cart from './components/Cart.jsx'
@@ -11,7 +11,9 @@ import {
   addItemApi,
   updateItemApi,
   deleteItemApi,
+  reorderItemsApi,
   getNextTransactionNoApi,
+  getNextCustomerNoApi,
   logTransactionApi,
 } from './api.js'
 
@@ -20,6 +22,26 @@ function todayLabel() {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+  })
+}
+
+// Replaces the items belonging to `category` with `orderedIds`' order, in place,
+// leaving every other item exactly where it was. Mirrors the same logic the
+// Apps Script backend uses so the local list and the sheet never disagree.
+function reorderCategoryLocally(items, category, orderedIds) {
+  const byId = {}
+  items.forEach((it) => {
+    if (it.category === category) byId[it.id] = it
+  })
+  const newOrder = orderedIds.map((id) => byId[id]).filter(Boolean)
+  let pointer = 0
+  return items.map((it) => {
+    if (it.category === category) {
+      const next = newOrder[pointer]
+      pointer += 1
+      return next || it
+    }
+    return it
   })
 }
 
@@ -58,10 +80,12 @@ export default function App() {
   const [items, setItems] = useState([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [itemActionError, setItemActionError] = useState(null)
+
+  const [searchTerm, setSearchTerm] = useState('')
 
   const [cart, setCart] = useState([])
-  const [customerNo, setCustomerNo] = useState('')
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [addModalCategory, setAddModalCategory] = useState(null) // null | 'bulk' | 'single'
   const [showManageModal, setShowManageModal] = useState(false)
 
   const [printing, setPrinting] = useState(false)
@@ -78,6 +102,15 @@ export default function App() {
       .finally(() => { if (!cancelled) setLoadingItems(false) })
     return () => { cancelled = true }
   }, [])
+
+  const filteredItems = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((it) => it.name.toLowerCase().includes(q))
+  }, [items, searchTerm])
+
+  const bulkItems = filteredItems.filter((it) => it.category === 'bulk')
+  const singleItems = filteredItems.filter((it) => (it.category || 'single') !== 'bulk')
 
   function addToCart(item) {
     setCart((prev) => {
@@ -107,14 +140,14 @@ export default function App() {
     setCart((prev) => prev.filter((l) => l.id !== id))
   }
 
-  async function handleAddItem({ name, price, emoji }) {
-    const newItem = await addItemApi({ name, price, emoji })
+  async function handleAddItem({ name, price, emoji, category }) {
+    const newItem = await addItemApi({ name, price, emoji, category })
     setItems((prev) => [...prev, newItem])
   }
 
   async function handleUpdateItem({ id, name, price, emoji }) {
     const updated = await updateItemApi({ id, name, price, emoji })
-    setItems((prev) => prev.map((it) => (it.id === updated.id ? updated : it)))
+    setItems((prev) => prev.map((it) => (it.id === updated.id ? { ...it, ...updated } : it)))
     setCart((prev) =>
       prev.map((line) => (line.id === updated.id ? { ...line, ...updated, qty: line.qty } : line))
     )
@@ -126,6 +159,14 @@ export default function App() {
     setCart((prev) => prev.filter((line) => line.id !== id))
   }
 
+  function handleReorder(category, orderedIds) {
+    setItemActionError(null)
+    setItems((prev) => reorderCategoryLocally(prev, category, orderedIds))
+    reorderItemsApi({ category, orderedIds }).catch((err) => {
+      setItemActionError(err.message || 'Could not save the new order to the sheet.')
+    })
+  }
+
   const total = cart.reduce((sum, l) => sum + l.price * l.qty, 0)
 
   async function handlePrint() {
@@ -133,11 +174,14 @@ export default function App() {
     setPrintError(null)
     setPrinting(true)
     try {
-      const trx = await getNextTransactionNoApi()
+      const [trx, cust] = await Promise.all([
+        getNextTransactionNoApi(),
+        getNextCustomerNoApi(),
+      ])
       setReceiptData({
         transactionNo: trx.transactionNo,
         date: trx.date || todayLabel(),
-        customerNo,
+        customerNo: cust.customerNo,
         items: cart,
         total,
       })
@@ -173,7 +217,6 @@ export default function App() {
         }).catch(() => {})
 
         setCart([])
-        setCustomerNo('')
       } catch (err) {
         if (!cancelled) setPrintError('Could not generate the receipt image.')
       } finally {
@@ -198,19 +241,19 @@ export default function App() {
           </div>
           <div className="header-actions">
             <span className="today-date">{todayLabel()}</span>
+            <input
+              className="search-input"
+              type="search"
+              placeholder="🔍 Search items…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             <button
               className="icon-btn header-icon-btn"
               title="Edit items"
               onClick={() => setShowManageModal(true)}
             >
               ✏️
-            </button>
-            <button
-              className="icon-btn header-icon-btn"
-              title="Delete items"
-              onClick={() => setShowManageModal(true)}
-            >
-              🗑️
             </button>
           </div>
         </header>
@@ -221,19 +264,27 @@ export default function App() {
             APPS_SCRIPT_URL is set correctly in src/config.js.
           </p>
         )}
+        {itemActionError && <p className="form-error">{itemActionError}</p>}
 
         {loadingItems ? (
           <p className="loading-text">Loading items…</p>
         ) : (
-          <div className="item-grid">
-            {items.map((item) => (
-              <ItemButton key={item.id} item={item} onClick={addToCart} />
-            ))}
-            <button className="item-btn add-item-btn" onClick={() => setShowAddModal(true)}>
-              <span className="add-plus">+</span>
-              <span className="item-name">Add item</span>
-            </button>
-          </div>
+          <>
+            <ItemSection
+              title="Bulk Orders"
+              items={bulkItems}
+              onItemClick={addToCart}
+              onAddClick={() => setAddModalCategory('bulk')}
+              onReorder={(orderedIds) => handleReorder('bulk', orderedIds)}
+            />
+            <ItemSection
+              title="Single Orders"
+              items={singleItems}
+              onItemClick={addToCart}
+              onAddClick={() => setAddModalCategory('single')}
+              onReorder={(orderedIds) => handleReorder('single', orderedIds)}
+            />
+          </>
         )}
       </main>
 
@@ -242,16 +293,19 @@ export default function App() {
         onIncrease={increaseQty}
         onDecrease={decreaseQty}
         onRemove={removeLine}
-        customerNo={customerNo}
-        setCustomerNo={setCustomerNo}
         total={total}
         onPrint={handlePrint}
         printing={printing}
         error={printError}
       />
 
-      {showAddModal && (
-        <AddItemModal onClose={() => setShowAddModal(false)} onSave={handleAddItem} />
+      {addModalCategory && (
+        <AddItemModal
+          category={addModalCategory}
+          categoryLabel={addModalCategory === 'bulk' ? 'Bulk Orders' : 'Single Orders'}
+          onClose={() => setAddModalCategory(null)}
+          onSave={handleAddItem}
+        />
       )}
 
       {showManageModal && (

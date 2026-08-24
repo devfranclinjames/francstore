@@ -78,6 +78,20 @@ button, input {
   gap: 8px;
 }
 
+.search-input {
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  background: var(--panel);
+  width: 200px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--red);
+}
+
 .today-date {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -115,6 +129,55 @@ button, input {
 }
 
 .loading-text { font-family: var(--font-mono); }
+
+/* ---------- Item sections (Bulk / Single) ---------- */
+
+.item-section {
+  margin-bottom: 32px;
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.section-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 3px solid var(--yellow);
+}
+
+.section-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #7A7264;
+}
+
+.section-empty {
+  font-size: 12px;
+  color: #7A7264;
+  font-family: var(--font-mono);
+}
+
+.item-drag-wrap {
+  cursor: grab;
+  border-radius: 16px;
+  transition: outline 0.08s ease;
+}
+
+.item-drag-wrap:active {
+  cursor: grabbing;
+}
+
+.item-drag-wrap.drag-over {
+  outline: 3px dashed var(--red);
+  outline-offset: 3px;
+}
 
 /* ---------- Item grid ---------- */
 
@@ -407,6 +470,13 @@ button, input {
   cursor: not-allowed;
 }
 
+.cart-hint {
+  font-size: 11px;
+  color: #7A7264;
+  text-align: center;
+  margin: 10px 0 0;
+}
+
 .form-error {
   color: var(--red);
   font-size: 12px;
@@ -440,6 +510,12 @@ button, input {
 
 .modal-box h2 {
   font-family: var(--font-display);
+  margin: 0 0 4px;
+}
+
+.modal-subtitle {
+  font-size: 12px;
+  color: #7A7264;
   margin: 0 0 16px;
 }
 

@@ -29,8 +29,8 @@ export async function fetchItems() {
   return data.items
 }
 
-export async function addItemApi({ name, price, emoji }) {
-  const data = await post({ action: 'addItem', name, price, emoji })
+export async function addItemApi({ name, price, emoji, category }) {
+  const data = await post({ action: 'addItem', name, price, emoji, category })
   if (!data.success) throw new Error(data.error || 'Could not add item')
   return data.item
 }
@@ -44,6 +44,18 @@ export async function updateItemApi({ id, name, price, emoji }) {
 export async function deleteItemApi({ id }) {
   const data = await post({ action: 'deleteItem', id })
   if (!data.success) throw new Error(data.error || 'Could not delete item')
+  return data
+}
+
+export async function reorderItemsApi({ category, orderedIds }) {
+  const data = await post({ action: 'reorderItems', category, orderedIds })
+  if (!data.success) throw new Error(data.error || 'Could not save the new order')
+  return data
+}
+
+export async function getNextCustomerNoApi() {
+  const data = await post({ action: 'getNextCustomerNo' })
+  if (!data.success) throw new Error(data.error || 'Could not get customer number')
   return data
 }
 

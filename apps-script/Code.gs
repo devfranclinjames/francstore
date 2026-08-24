@@ -12,27 +12,29 @@
  * 5. Copy the Web app URL and paste it into src/config.js as APPS_SCRIPT_URL.
  * ---------------------------------------------------------------
  * Sheets created:
- *   Items        | id | name | price | imageKey |
- *   Images       | imageKey | emoji | imageUrl |   (fill in imageUrl later
- *                                                    to replace the emoji
- *                                                    placeholder with a real photo)
- *   Counter      | date | lastNumber |             (daily transaction counter)
- *   Transactions | transactionNo | date | time | customerNo | itemsJson | total |
+ *   Items           | id | name | price | imageKey | category |
+ *   Images          | imageKey | emoji | imageUrl |   (fill in imageUrl later
+ *                                                        to replace the emoji
+ *                                                        placeholder with a real photo)
+ *   Counter         | date | lastNumber |             (daily transaction counter, resets each day)
+ *   CustomerCounter | lastNumber |                    (customer number, never resets)
+ *   Transactions    | transactionNo | date | time | customerNo | itemsJson | total |
  */
 
 var TIMEZONE = Session.getScriptTimeZone() || 'Asia/Manila';
 
 var DEFAULT_ITEMS = [
-  ['Rice (1kg)', 65, '🍚'],
-  ['Pandesal', 15, '🍞'],
-  ['Softdrinks', 35, '🥤'],
-  ['Coffee', 12, '☕'],
-  ['Sugar (1kg)', 70, '🍬'],
-  ['Eggs (tray)', 210, '🥚'],
-  ['Cooking Oil', 95, '🧴'],
-  ['Instant Noodles', 15, '🍜'],
-  ['Canned Goods', 40, '🥫'],
-  ['Biscuits', 25, '🍪'],
+  // [name, price, emoji, category]
+  ['Rice (1kg)', 65, '🍚', 'bulk'],
+  ['Sugar (1kg)', 70, '🍬', 'bulk'],
+  ['Eggs (tray)', 210, '🥚', 'bulk'],
+  ['Cooking Oil', 95, '🧴', 'bulk'],
+  ['Canned Goods (case)', 480, '🥫', 'bulk'],
+  ['Pandesal', 15, '🍞', 'single'],
+  ['Softdrinks', 35, '🥤', 'single'],
+  ['Coffee', 12, '☕', 'single'],
+  ['Instant Noodles', 15, '🍜', 'single'],
+  ['Biscuits', 25, '🍪', 'single'],
 ]
 
 // ---------------------------------------------------------------
@@ -66,8 +68,12 @@ function doPost(e) {
       return jsonResponse(updateItem(body))
     case 'deleteItem':
       return jsonResponse(deleteItem(body))
+    case 'reorderItems':
+      return jsonResponse(reorderItems(body))
     case 'getNextTransactionNo':
       return jsonResponse(getNextTransactionNo())
+    case 'getNextCustomerNo':
+      return jsonResponse(getNextCustomerNo())
     case 'logTransaction':
       return jsonResponse(logTransaction(body))
     default:
@@ -92,9 +98,10 @@ function setupSheets() {
 function ensureSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet()
 
-  var itemsSheet = createSheetIfMissing(ss, 'Items', ['id', 'name', 'price', 'imageKey'])
+  var itemsSheet = createSheetIfMissing(ss, 'Items', ['id', 'name', 'price', 'imageKey', 'category'])
   var imagesSheet = createSheetIfMissing(ss, 'Images', ['imageKey', 'emoji', 'imageUrl'])
   createSheetIfMissing(ss, 'Counter', ['date', 'lastNumber'])
+  var customerSheet = createSheetIfMissing(ss, 'CustomerCounter', ['lastNumber'])
   createSheetIfMissing(ss, 'Transactions', [
     'transactionNo', 'date', 'time', 'customerNo', 'itemsJson', 'total',
   ])
@@ -105,8 +112,12 @@ function ensureSheets() {
       var id = i + 1
       var imageKey = 'img_seed_' + id
       imagesSheet.appendRow([imageKey, row[2], ''])
-      itemsSheet.appendRow([id, row[0], row[1], imageKey])
+      itemsSheet.appendRow([id, row[0], row[1], imageKey, row[3]])
     })
+  }
+
+  if (customerSheet.getLastRow() === 1) {
+    customerSheet.appendRow([0])
   }
 }
 
@@ -149,6 +160,7 @@ function getItemsData() {
       name: r[1],
       price: r[2],
       imageKey: r[3],
+      category: r[4] || 'single',
       emoji: img.emoji,
       imageUrl: img.imageUrl,
     })
@@ -160,6 +172,7 @@ function addItem(body) {
   var name = (body.name || '').toString().trim()
   var price = parseFloat(body.price)
   var emoji = body.emoji || '🛒'
+  var category = body.category === 'bulk' ? 'bulk' : 'single'
 
   if (!name) return { success: false, error: 'Item name is required' }
   if (isNaN(price) || price < 0) return { success: false, error: 'Invalid price' }
@@ -177,11 +190,19 @@ function addItem(body) {
 
   var imageKey = 'img_' + new Date().getTime()
   imagesSheet.appendRow([imageKey, emoji, ''])
-  itemsSheet.appendRow([newId, name, price, imageKey])
+  itemsSheet.appendRow([newId, name, price, imageKey, category])
 
   return {
     success: true,
-    item: { id: newId, name: name, price: price, imageKey: imageKey, emoji: emoji, imageUrl: '' },
+    item: {
+      id: newId,
+      name: name,
+      price: price,
+      imageKey: imageKey,
+      category: category,
+      emoji: emoji,
+      imageUrl: '',
+    },
   }
 }
 
@@ -202,10 +223,12 @@ function updateItem(body) {
   var data = itemsSheet.getDataRange().getValues()
   var rowIndex = -1
   var imageKey = null
+  var category = 'single'
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(id)) {
       rowIndex = i + 1
       imageKey = data[i][3]
+      category = data[i][4] || 'single'
       break
     }
   }
@@ -234,6 +257,7 @@ function updateItem(body) {
       name: name,
       price: price,
       imageKey: imageKey,
+      category: category,
       emoji: emoji || '🛒',
       imageUrl: imageUrl || '',
     },
@@ -255,6 +279,50 @@ function deleteItem(body) {
     }
   }
   return { success: false, error: 'Item not found' }
+}
+
+/**
+ * Reorders items within one category (bulk|single), leaving every item in
+ * the other category exactly where it was, and physically rewrites the
+ * Items sheet rows so the sheet reflects the same order shown in the app.
+ */
+function reorderItems(body) {
+  var category = body.category === 'bulk' ? 'bulk' : 'single'
+  var orderedIds = body.orderedIds || []
+  if (!orderedIds.length) return { success: false, error: 'No order given' }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet()
+  var itemsSheet = ss.getSheetByName('Items')
+  var data = itemsSheet.getDataRange().getValues()
+  var headers = data[0]
+  var rows = data.slice(1)
+
+  var targetRows = {}
+  rows.forEach(function (r) {
+    var cat = r[4] || 'single'
+    if (cat === category) targetRows[r[0]] = r
+  })
+
+  var newTargetSequence = orderedIds
+    .map(function (id) { return targetRows[id] })
+    .filter(Boolean)
+
+  var pointer = 0
+  var newRows = rows.map(function (r) {
+    var cat = r[4] || 'single'
+    if (cat === category) {
+      var replacement = newTargetSequence[pointer]
+      pointer += 1
+      return replacement || r
+    }
+    return r
+  })
+
+  if (newRows.length) {
+    itemsSheet.getRange(2, 1, newRows.length, headers.length).setValues(newRows)
+  }
+
+  return { success: true }
 }
 
 // ---------------------------------------------------------------
@@ -281,6 +349,20 @@ function getNextTransactionNo() {
 
 function formatDisplayDate() {
   return Utilities.formatDate(new Date(), TIMEZONE, 'MMM d, yyyy')
+}
+
+// ---------------------------------------------------------------
+// Customer counter (never resets — increments forever)
+// ---------------------------------------------------------------
+
+function getNextCustomerNo() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet()
+  var sheet = ss.getSheetByName('CustomerCounter')
+  var last = sheet.getRange(2, 1).getValue()
+  if (!last) last = 0
+  var next = last + 1
+  sheet.getRange(2, 1).setValue(next)
+  return { success: true, customerNo: next }
 }
 
 // ---------------------------------------------------------------
