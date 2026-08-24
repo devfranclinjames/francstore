@@ -238,7 +238,7 @@ button, input {
 
 .item-price-tag {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 20x;
   font-weight: 600;
   background: var(--yellow);
   border: 2px solid var(--line);
