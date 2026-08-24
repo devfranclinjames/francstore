@@ -1,0 +1,1 @@
+document.querySelector('.item-name:contains("Cold")')?.closest('.item-btn')?.classList.add('skyblueme');
