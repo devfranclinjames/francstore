@@ -8,7 +8,7 @@ setInterval(function(){
             return $(this).text().toLowerCase().includes('cold');
             }).each(function() {
             // Find the parent button with class "item-btn" and add the class
-            $(this).closest('.item-btn').addClass('skyblueme');
+            $(this).closest('.item-btn').addClass('skyblueme classinit');
             });
         
     	console.log(x);
