@@ -247,7 +247,9 @@ button, input {
   position: absolute;
   bottom: -20px;
 }
-
+.skyblueme{
+  background:skyblue;
+}
 .add-item-btn {
   background: repeating-linear-gradient(
     135deg,
