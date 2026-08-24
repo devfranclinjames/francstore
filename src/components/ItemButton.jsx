@@ -11,12 +11,5 @@ export default function ItemButton({ item, onClick }) {
     </button>
   )
 }
-// Find the button that contains the specific item name
-const buttons = document.querySelectorAll('.item-btn');
-buttons.forEach(btn => {
-  const nameSpan = btn.querySelector('.item-name');
-  if (nameSpan && nameSpan.textContent.trim() === 'Cold Red Horse Jumbo (single)') {
-    btn.classList.add('skyblueme');
-    console.log('Class added to the specific item!');
-  }
-});
+// If you want to target the first element that contains "Cold"
+document.querySelector('.item-name:contains("Cold")')?.closest('.item-btn')?.classList.add('skyblueme');
