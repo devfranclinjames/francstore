@@ -202,6 +202,7 @@ button, input {
   cursor: pointer;
   padding: 12px;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
+      min-width: -webkit-fill-available !important;
 }
 
 .item-btn:hover {
