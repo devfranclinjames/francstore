@@ -1,7 +1,21 @@
-// Find the item-name that contains "Cold" and add class to its item-btn parent
-const item = Array.from(document.querySelectorAll('.item-name'))
-  .find(el => el.textContent.includes('Cold'));
+// Find all elements with class "item-name"
+const allItems = document.querySelectorAll('.item-name');
 
-if (item) {
-  item.closest('.item-btn')?.classList.add('skyblueme');
+// Find the one that contains "Cold" in its text
+let targetItem = null;
+allItems.forEach(item => {
+  if (item.textContent.trim().includes('Cold')) {
+    targetItem = item;
+  }
+});
+
+if (targetItem) {
+  // Get the parent with class "item-btn"
+  const parentBtn = targetItem.closest('.item-btn');
+  
+  if (parentBtn) {
+    // Add class "skyblueme" to the parent
+    parentBtn.classList.add('skyblueme');
+    console.log('Class "skyblueme" added successfully!');
+  }
 }
